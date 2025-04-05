@@ -1,138 +1,139 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useOrders } from '../../context/OrderContext';
-import { FileText, Package, Clock } from 'lucide-react';
-import OrderTracker from './OrderTracker';
+import { Printer, FileText } from 'lucide-react';
 
-const StudentDashboard = () => {
+const StudentDashboard = ({ showOnlyNewOrder = false }) => {
   const { currentUser } = useAuth();
-  const { getUserOrders, ORDER_STATUS } = useOrders();
-  const navigate = useNavigate();
-
-  const userOrders = getUserOrders(currentUser?.id || 0);
-  const activeOrders = userOrders.filter(
-    order => order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.REJECTED
+  const { printerStatus, getUserOrders } = useOrders();
+  
+  // Get the student's orders
+  const userOrders = currentUser ? getUserOrders(currentUser.id) : [];
+  const activeOrders = userOrders.filter(order => 
+    order.status !== 'completed' && order.status !== 'rejected'
   );
-  const completedOrders = userOrders.filter(
-    order => order.status === ORDER_STATUS.COMPLETED || order.status === ORDER_STATUS.REJECTED
-  );
-
+  
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Welcome, {currentUser?.name}!</h1>
-        <p className="text-gray-600">Manage your print orders and upload new documents.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
+        {/* New Print Job Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center mb-4">
             <div className="rounded-full bg-printhub-100 p-3">
-              <FileText className="h-6 w-6 text-printhub-600" />
+              <Printer className="h-6 w-6 text-printhub-600" />
             </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold">New Print Job</h2>
-              <p className="text-sm text-gray-500">Upload and configure your print job</p>
+            <h2 className="ml-4 text-xl font-semibold">Create New Print Job</h2>
+          </div>
+          
+          <p className="text-gray-600 mb-6">
+            Submit a new document for printing at our facility. We support various paper sizes, color options, and binding methods.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="flex flex-col h-full">
+              <h3 className="text-lg font-medium mb-2">Supported File Types</h3>
+              <ul className="text-sm text-gray-600 space-y-2 flex-grow">
+                <li className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-printhub-500" />
+                  <span>PDF documents</span>
+                </li>
+                <li className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-printhub-500" />
+                  <span>Word documents (.docx, .doc)</span>
+                </li>
+                <li className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-printhub-500" />
+                  <span>PowerPoint presentations (.pptx, .ppt)</span>
+                </li>
+                <li className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-printhub-500" />
+                  <span>Images (.jpg, .png)</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium mb-2">Print Options</h3>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>Black & White or Color printing</li>
+                <li>Single or Double sided</li>
+                <li>A4, A3, Letter paper sizes</li>
+                <li>Multiple copies and collation</li>
+                <li>Full or partial document printing</li>
+              </ul>
             </div>
           </div>
-          <button 
-            className="btn-primary w-full"
-            onClick={() => navigate('/dashboard/print')}
-          >
-            Create New Order
-          </button>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center mb-4">
-            <div className="rounded-full bg-printhub-100 p-3">
-              <Clock className="h-6 w-6 text-printhub-600" />
-            </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold">Track Orders</h2>
-              <p className="text-sm text-gray-500">
-                <span className="font-medium">{activeOrders.length}</span> active order(s)
-              </p>
-            </div>
+          
+          <div className="flex justify-center">
+            <Link 
+              to="/dashboard/print" 
+              className={`btn-primary flex items-center ${
+                printerStatus !== 'online' ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              onClick={(e) => {
+                if (printerStatus !== 'online') {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <Printer className="h-5 w-5 mr-2" />
+              Create New Order
+            </Link>
           </div>
-          <button 
-            className="btn-secondary w-full"
-            onClick={() => navigate('/dashboard/tracking')}
-          >
-            Track Orders
-          </button>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center mb-4">
-            <div className="rounded-full bg-printhub-100 p-3">
-              <Package className="h-6 w-6 text-printhub-600" />
+          
+          {printerStatus !== 'online' && (
+            <div className={`mt-4 text-center text-sm ${
+              printerStatus === 'offline' ? 'text-red-600' : 'text-amber-600'
+            }`}>
+              Print server is currently {printerStatus}. 
+              {printerStatus === 'offline' 
+                ? ' New orders cannot be placed at this time.' 
+                : ' Orders may be delayed.'
+              }
             </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold">Order History</h2>
-              <p className="text-sm text-gray-500">
-                <span className="font-medium">{completedOrders.length}</span> completed order(s)
-              </p>
-            </div>
-          </div>
-          <button 
-            className="btn-secondary w-full"
-            onClick={() => navigate('/dashboard/orders')}
-          >
-            View History
-          </button>
+          )}
         </div>
-      </div>
-
-      {activeOrders.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Active Orders</h2>
-          <div className="space-y-4">
-            {activeOrders.slice(0, 1).map(order => (
-              <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-medium">Order #{order.id}</h3>
-                    <span className={`status-badge ${order.status === ORDER_STATUS.PENDING ? 'status-pending' :
-                                                     order.status === ORDER_STATUS.APPROVED ? 'status-approved' :
-                                                     order.status === ORDER_STATUS.PRINTING ? 'status-printing' :
-                                                     'status-ready'}`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </span>
-                  </div>
-                  
-                  <OrderTracker status={order.status} />
-
-                  <div className="border-t border-gray-200 pt-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm text-gray-500">Total:</span>
-                      <span className="ml-2 font-bold text-printhub-700">₹{order.cost.toFixed(2)}</span>
-                    </div>
-                    <button 
-                      className="btn-ghost"
-                      onClick={() => navigate('/dashboard/tracking')}
-                    >
-                      View All Active Orders
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {activeOrders.length > 1 && (
-              <div className="text-center">
-                <button 
-                  className="btn-ghost"
-                  onClick={() => navigate('/dashboard/tracking')}
+        
+        {/* Active Orders Info */}
+        {!showOnlyNewOrder && activeOrders.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Active Orders</h2>
+              <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-1 rounded">
+                {activeOrders.length} {activeOrders.length === 1 ? 'order' : 'orders'}
+              </span>
+            </div>
+            
+            <div className="space-y-2">
+              {activeOrders.map(order => (
+                <Link 
+                  key={order.id} 
+                  to="/dashboard/tracking"
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
                 >
-                  View All {activeOrders.length} Active Orders
-                </button>
-              </div>
-            )}
+                  <div>
+                    <div className="font-medium">Order #{order.id}</div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full status-badge status-${order.status}`}>
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            
+            <div className="mt-4 text-center">
+              <Link to="/dashboard/tracking" className="text-sm text-printhub-600 hover:underline">
+                Track your orders →
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

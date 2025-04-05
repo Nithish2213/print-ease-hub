@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../context/OrderContext';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Upload, X, Check, Printer } from 'lucide-react';
+import { FileText, Upload, X, Check, Printer, QrCode, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PrintDetails = () => {
   const navigate = useNavigate();
-  const { createOrder } = useOrders();
+  const { createOrder, printerStatus } = useOrders();
   const { currentUser } = useAuth();
   
   const [files, setFiles] = useState([]);
@@ -21,6 +21,14 @@ const PrintDetails = () => {
     notes: '',
   });
   const [step, setStep] = useState(1); // 1: Upload & Details, 2: Payment, 3: Success
+  const [paymentMethod, setPaymentMethod] = useState('qr'); // qr, phonepe, paytm, gpay
+  const [paymentDetails, setPaymentDetails] = useState({
+    name: '',
+    phone: '',
+    reference: '',
+    proofFile: null
+  });
+  const [proofUploaded, setProofUploaded] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -47,8 +55,32 @@ const PrintDetails = () => {
     }));
   };
 
+  const handlePaymentDetailChange = (e) => {
+    const { name, value } = e.target;
+    setPaymentDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProofUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setPaymentDetails(prev => ({
+        ...prev,
+        proofFile: e.target.files[0]
+      }));
+      setProofUploaded(true);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    if (printerStatus !== 'online') {
+      toast.error(`Cannot place order. Print server is ${printerStatus}.`);
+      return;
+    }
+    
     if (files.length === 0) {
       toast.error("Please upload at least one file");
       return;
@@ -58,8 +90,16 @@ const PrintDetails = () => {
   };
 
   const handlePayment = () => {
-    // In a real app, this would handle payment processing
-    // For now, we'll simulate a successful payment
+    // Validate payment details
+    if (paymentMethod !== 'qr' && (!paymentDetails.name || !paymentDetails.phone)) {
+      toast.error("Please fill in your name and phone number");
+      return;
+    }
+    
+    if (paymentMethod === 'qr' && !proofUploaded) {
+      toast.error("Please upload payment proof");
+      return;
+    }
     
     // Calculate total pages for cost estimation
     const totalPages = files.reduce((total, file) => total + file.pages, 0);
@@ -75,12 +115,112 @@ const PrintDetails = () => {
       userId: currentUser.id,
       files,
       options,
+      paymentMethod,
+      paymentDetails: {
+        name: paymentDetails.name,
+        phone: paymentDetails.phone,
+        reference: paymentDetails.reference || 'Direct payment'
+      },
       cost: totalCost
     });
     
     // Show success screen
     setStep(3);
   };
+
+  const renderQRPayment = () => (
+    <div className="text-center">
+      <div className="bg-gray-100 p-6 rounded-lg inline-block mb-4">
+        <QrCode className="h-32 w-32 mx-auto text-gray-700" />
+        <p className="mt-2 text-sm text-gray-600">Scan to pay ₹{(files.reduce((total, file) => total + file.pages, 0) * options.copies * (options.printType === 'color' ? 5 : 2)).toFixed(2)}</p>
+      </div>
+      
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Payment Reference ID (if any)</label>
+        <input
+          type="text"
+          name="reference"
+          value={paymentDetails.reference}
+          onChange={handlePaymentDetailChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          placeholder="Optional reference number"
+        />
+      </div>
+      
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Upload Payment Proof</label>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+          <input 
+            type="file" 
+            onChange={handleProofUpload}
+            className="hidden" 
+            id="proof-upload"
+            accept="image/*"
+          />
+          <label 
+            htmlFor="proof-upload"
+            className={`cursor-pointer inline-block px-4 py-2 rounded ${proofUploaded ? 'bg-green-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            {proofUploaded ? 'Proof Uploaded ✓' : 'Select Screenshot'}
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderUPIPayment = () => (
+    <div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+        <input
+          type="text"
+          name="name"
+          value={paymentDetails.name}
+          onChange={handlePaymentDetailChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          placeholder="Enter your full name"
+          required
+        />
+      </div>
+      
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+        <input
+          type="tel"
+          name="phone"
+          value={paymentDetails.phone}
+          onChange={handlePaymentDetailChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          placeholder="Enter phone number linked to UPI"
+          required
+        />
+      </div>
+      
+      <div className="p-4 bg-gray-50 rounded-lg mb-6 text-center">
+        <p className="text-gray-600 mb-3">Click the pay button below to be redirected to the payment app</p>
+        <div className="flex justify-center space-x-4">
+          {paymentMethod === 'phonepe' && (
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Smartphone className="h-8 w-8 text-purple-600 mx-auto" />
+              <p className="text-xs font-medium text-purple-800 mt-1">PhonePe</p>
+            </div>
+          )}
+          {paymentMethod === 'paytm' && (
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Smartphone className="h-8 w-8 text-blue-600 mx-auto" />
+              <p className="text-xs font-medium text-blue-800 mt-1">Paytm</p>
+            </div>
+          )}
+          {paymentMethod === 'gpay' && (
+            <div className="p-3 bg-green-100 rounded-lg">
+              <Smartphone className="h-8 w-8 text-green-600 mx-auto" />
+              <p className="text-xs font-medium text-green-800 mt-1">Google Pay</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderStep = () => {
     switch (step) {
@@ -217,7 +357,7 @@ const PrintDetails = () => {
               <button 
                 type="submit" 
                 className="btn-primary"
-                disabled={files.length === 0}
+                disabled={files.length === 0 || printerStatus !== 'online'}
               >
                 Continue to Payment
               </button>
@@ -254,44 +394,49 @@ const PrintDetails = () => {
               </div>
             </div>
             
-            {/* Mock payment form */}
+            <div className="mb-6">
+              <h4 className="text-sm font-medium mb-3">Payment Method</h4>
+              <div className="grid grid-cols-4 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('qr')}
+                  className={`p-3 flex flex-col items-center rounded-lg border ${paymentMethod === 'qr' ? 'border-printhub-500 bg-printhub-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                >
+                  <QrCode className={`h-6 w-6 mb-1 ${paymentMethod === 'qr' ? 'text-printhub-500' : 'text-gray-500'}`} />
+                  <span className="text-xs">QR Code</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('phonepe')}
+                  className={`p-3 flex flex-col items-center rounded-lg border ${paymentMethod === 'phonepe' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                >
+                  <Smartphone className={`h-6 w-6 mb-1 ${paymentMethod === 'phonepe' ? 'text-purple-500' : 'text-gray-500'}`} />
+                  <span className="text-xs">PhonePe</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('paytm')}
+                  className={`p-3 flex flex-col items-center rounded-lg border ${paymentMethod === 'paytm' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                >
+                  <Smartphone className={`h-6 w-6 mb-1 ${paymentMethod === 'paytm' ? 'text-blue-500' : 'text-gray-500'}`} />
+                  <span className="text-xs">Paytm</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('gpay')}
+                  className={`p-3 flex flex-col items-center rounded-lg border ${paymentMethod === 'gpay' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                >
+                  <Smartphone className={`h-6 w-6 mb-1 ${paymentMethod === 'gpay' ? 'text-green-500' : 'text-gray-500'}`} />
+                  <span className="text-xs">Google Pay</span>
+                </button>
+              </div>
+            </div>
+            
             <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-                <input
-                  type="text"
-                  placeholder="1234 5678 9012 3456"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-                  <input
-                    type="text"
-                    placeholder="123"
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name on Card</label>
-                <input
-                  type="text"
-                  placeholder="John Doe"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
+              {paymentMethod === 'qr' ? renderQRPayment() : renderUPIPayment()}
             </div>
             
             <div className="flex justify-between">

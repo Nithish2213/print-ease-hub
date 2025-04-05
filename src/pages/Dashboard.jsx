@@ -3,6 +3,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../context/AuthContext';
+import { useOrders } from '../context/OrderContext';
 import Layout from '../components/Layout';
 import StudentDashboard from '../components/student/StudentDashboard';
 import AdminDashboard from '../components/admin/AdminDashboard';
@@ -10,9 +11,15 @@ import CoAdminDashboard from '../components/co-admin/CoAdminDashboard';
 import PrintDetails from '../components/student/PrintDetails';
 import OrderTracking from '../components/student/OrderTracking';
 import OrderHistory from '../components/student/OrderHistory';
+import InventoryManagement from '../components/co-admin/InventoryManagement';
+import ManageOrders from '../components/co-admin/ManageOrders';
+import PrinterControls from '../components/co-admin/PrinterControls';
+import StaffManagement from '../components/admin/StaffManagement';
+import RevenueReport from '../components/admin/RevenueReport';
 
 const Dashboard = ({ content }) => {
   const { currentUser } = useAuth();
+  const { printerStatus } = useOrders();
 
   // If not logged in, redirect to login page
   if (!currentUser) {
@@ -31,23 +38,48 @@ const Dashboard = ({ content }) => {
         case 'orders':
           return <OrderHistory />;
         default:
-          return <StudentDashboard />;
+          return <StudentDashboard showOnlyNewOrder={true} />; // Only show new order card
       }
     }
 
-    // For admin and co-admin, always show their dashboards
-    switch (currentUser.role) {
-      case ROLES.ADMIN:
-        return <AdminDashboard />;
-      case ROLES.CO_ADMIN:
-        return <CoAdminDashboard />;
-      default:
-        return <div>Unknown user role</div>;
+    // Handle co-admin specific content views
+    if (currentUser.role === ROLES.CO_ADMIN) {
+      switch (content) {
+        case 'manage-orders':
+          return <ManageOrders />;
+        case 'inventory':
+          return <InventoryManagement />;
+        case 'printer-controls':
+          return <PrinterControls />;
+        default:
+          return <CoAdminDashboard />;
+      }
     }
+
+    // Handle admin specific content views
+    if (currentUser.role === ROLES.ADMIN) {
+      switch (content) {
+        case 'staff':
+          return <StaffManagement />;
+        case 'revenue':
+          return <RevenueReport />;
+        default:
+          return <AdminDashboard />;
+      }
+    }
+
+    // Fallback for unknown roles
+    return <div>Unknown user role</div>;
   };
 
   return (
     <Layout>
+      {/* Show printer status notification for students when server is offline/busy */}
+      {currentUser.role === ROLES.STUDENT && printerStatus !== 'online' && (
+        <div className={`w-full p-3 mb-4 text-center ${printerStatus === 'offline' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+          <strong>Notice:</strong> Print server is currently {printerStatus}. {printerStatus === 'offline' ? 'New orders cannot be processed at this time.' : 'Orders may be delayed.'}
+        </div>
+      )}
       {renderContent()}
     </Layout>
   );

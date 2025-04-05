@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 
@@ -12,6 +12,7 @@ export const ORDER_STATUS = {
   READY: 'ready',
   COMPLETED: 'completed',
   REJECTED: 'rejected',
+  DELIVERED: 'delivered'
 };
 
 export const OrderProvider = ({ children }) => {
@@ -35,7 +36,13 @@ export const OrderProvider = ({ children }) => {
       status: ORDER_STATUS.PENDING,
       createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
       cost: 24.00,
-      otp: null
+      otp: null,
+      paymentMethod: 'qr',
+      paymentDetails: {
+        name: '',
+        phone: '',
+        reference: 'REF123456'
+      }
     },
     {
       id: 'ORD-002',
@@ -54,7 +61,13 @@ export const OrderProvider = ({ children }) => {
       status: ORDER_STATUS.APPROVED,
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       cost: 120.00,
-      otp: null
+      otp: null,
+      paymentMethod: 'phonepe',
+      paymentDetails: {
+        name: 'John Doe',
+        phone: '9876543210',
+        reference: ''
+      }
     }
   ]);
 
@@ -75,8 +88,38 @@ export const OrderProvider = ({ children }) => {
   const [printerStatus, setPrinterStatus] = useState('online'); // online, busy, offline
   const [notifications, setNotifications] = useState([]);
 
+  useEffect(() => {
+    // Check if we need to send inventory alerts
+    const checkInventoryAlerts = () => {
+      const lowInk = Object.entries(inventory.ink).filter(([_, level]) => level < 20);
+      const lowPaper = Object.entries(inventory.paper).filter(([_, quantity]) => quantity < 100);
+      
+      if (lowInk.length > 0 || lowPaper.length > 0) {
+        const items = [
+          ...lowInk.map(([color]) => `${color} ink`),
+          ...lowPaper.map(([type]) => `${type} paper`)
+        ];
+        
+        addNotification({
+          type: 'inventory-alert',
+          message: `Low inventory alert: ${items.join(', ')}`,
+          read: false,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    };
+    
+    checkInventoryAlerts();
+  }, [inventory]);
+
   // Create a new order
   const createOrder = (orderData) => {
+    // Check if printer is offline
+    if (printerStatus === 'offline') {
+      toast.error('Cannot place order. Print server is offline.');
+      return null;
+    }
+    
     const newOrder = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       status: ORDER_STATUS.PENDING,
@@ -85,7 +128,7 @@ export const OrderProvider = ({ children }) => {
       ...orderData
     };
     
-    setOrders([newOrder, ...orders]);
+    setOrders(prevOrders => [newOrder, ...prevOrders]);
     toast.success(`Order ${newOrder.id} has been created!`);
     
     // Add notification for co-admin
@@ -102,7 +145,7 @@ export const OrderProvider = ({ children }) => {
 
   // Update order status
   const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(orders.map(order => {
+    setOrders(prevOrders => prevOrders.map(order => {
       if (order.id === orderId) {
         // Generate OTP if status is changing to completed
         const otp = newStatus === ORDER_STATUS.COMPLETED
@@ -125,6 +168,11 @@ export const OrderProvider = ({ children }) => {
           });
         }
         
+        // Update inventory based on the print job if status is changing to printing
+        if (newStatus === ORDER_STATUS.PRINTING) {
+          updateInventoryBasedOnOrder(order);
+        }
+        
         return {
           ...order,
           status: newStatus,
@@ -139,14 +187,52 @@ export const OrderProvider = ({ children }) => {
     }
   };
 
+  // Update inventory based on the print job
+  const updateInventoryBasedOnOrder = (order) => {
+    const { options, files } = order;
+    const totalPages = files.reduce((total, file) => total + file.pages, 0) * options.copies;
+    
+    // Update ink levels (reduce more for color printing)
+    const inkReduction = options.printType === 'color' ? 0.2 : 0.1; // % per page
+    
+    setInventory(prev => {
+      const newInk = { ...prev.ink };
+      
+      // Reduce black ink for all prints
+      newInk.black = Math.max(0, newInk.black - (totalPages * inkReduction));
+      
+      // Reduce color inks only for color prints
+      if (options.printType === 'color') {
+        newInk.cyan = Math.max(0, newInk.cyan - (totalPages * inkReduction * 0.7));
+        newInk.magenta = Math.max(0, newInk.magenta - (totalPages * inkReduction * 0.7));
+        newInk.yellow = Math.max(0, newInk.yellow - (totalPages * inkReduction * 0.7));
+      }
+      
+      // Update paper stock
+      const paperSize = options.paperSize;
+      const paperReduction = options.sided === 'double' ? Math.ceil(totalPages / 2) : totalPages;
+      
+      return {
+        ink: newInk,
+        paper: {
+          ...prev.paper,
+          [paperSize]: Math.max(0, prev.paper[paperSize] - paperReduction)
+        }
+      };
+    });
+  };
+
   // Add notification
   const addNotification = (notification) => {
-    setNotifications(prev => [notification, ...prev]);
+    setNotifications(prev => [{
+      id: `notif-${Date.now()}`,
+      ...notification
+    }, ...prev]);
   };
 
   // Mark notification as read
   const markNotificationAsRead = (notificationId) => {
-    setNotifications(notifications.map(notif => 
+    setNotifications(prevNotifications => prevNotifications.map(notif => 
       notif.id === notificationId ? { ...notif, read: true } : notif
     ));
   };
@@ -188,6 +274,32 @@ export const OrderProvider = ({ children }) => {
     return orders.find(order => order.id === orderId);
   };
 
+  // Get orders by status
+  const getOrdersByStatus = (status) => {
+    if (status === 'all') return orders;
+    return orders.filter(order => order.status === status);
+  };
+
+  // Generate receipt for completed order
+  const generateReceipt = (orderId) => {
+    const order = getOrderById(orderId);
+    if (!order) return null;
+    
+    return {
+      orderId: order.id,
+      date: new Date(order.createdAt).toLocaleDateString(),
+      amount: order.cost,
+      paymentMethod: order.paymentMethod || 'Direct Payment',
+      items: order.files.map(file => ({
+        name: file.name,
+        pages: file.pages,
+        copies: order.options.copies,
+        printType: order.options.printType === 'bw' ? 'Black & White' : 'Color',
+        paperSize: order.options.paperSize
+      }))
+    };
+  };
+
   const value = {
     orders,
     inventory,
@@ -199,7 +311,9 @@ export const OrderProvider = ({ children }) => {
     togglePrinterStatus,
     getUserOrders,
     getOrderById,
+    getOrdersByStatus,
     markNotificationAsRead,
+    generateReceipt,
     ORDER_STATUS
   };
 

@@ -1,26 +1,38 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useOrders } from '../../context/OrderContext';
 import { 
   TrendingUp, 
-  Users, 
   Package, 
-  Calendar, 
-  BarChart3,
   CheckCircle2,
-  Clock
+  Clock,
+  AlertCircle,
+  FileText,
+  Users
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
   const { orders, inventory, ORDER_STATUS } = useOrders();
   
-  // Calculate stats
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter(order => order.status === ORDER_STATUS.PENDING).length;
-  const completedOrders = orders.filter(order => order.status === ORDER_STATUS.COMPLETED).length;
-  const totalRevenue = orders.reduce((total, order) => total + order.cost, 0);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalRevenue: 0
+  });
+  
+  useEffect(() => {
+    // Update stats to ensure real-time data
+    setStats({
+      totalOrders: orders.length,
+      pendingOrders: orders.filter(order => order.status === ORDER_STATUS.PENDING).length,
+      completedOrders: orders.filter(order => order.status === ORDER_STATUS.COMPLETED).length,
+      totalRevenue: orders.reduce((total, order) => total + order.cost, 0)
+    });
+  }, [orders, ORDER_STATUS]);
   
   // Calculate low stock items
   const lowStockItems = [];
@@ -73,34 +85,36 @@ const AdminDashboard = () => {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard 
-          icon={TrendingUp} 
-          title="Total Revenue" 
-          value={`₹${totalRevenue.toFixed(2)}`} 
-          subtitle="All time"
-          color="bg-green-100 text-green-600"
-        />
+        <Link to="/dashboard/revenue">
+          <StatCard 
+            icon={TrendingUp} 
+            title="Total Revenue" 
+            value={`₹${stats.totalRevenue.toFixed(2)}`} 
+            subtitle="Click for details"
+            color="bg-green-100 text-green-600"
+          />
+        </Link>
         <StatCard 
           icon={Package} 
           title="Total Orders" 
-          value={totalOrders} 
+          value={stats.totalOrders} 
           color="bg-blue-100 text-blue-600"
         />
         <StatCard 
           icon={Clock} 
           title="Pending Orders" 
-          value={pendingOrders} 
+          value={stats.pendingOrders} 
           color="bg-amber-100 text-amber-600"
         />
         <StatCard 
           icon={CheckCircle2} 
           title="Completed Orders" 
-          value={completedOrders} 
+          value={stats.completedOrders} 
           color="bg-purple-100 text-purple-600"
         />
       </div>
 
-      {/* Today's Overview */}
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
@@ -177,9 +191,9 @@ const AdminDashboard = () => {
                     </div>
                   ))}
                   {yesterdayOrders.length > 3 && (
-                    <button className="text-sm text-printhub-600 font-medium hover:underline">
+                    <Link to="/dashboard/revenue" className="text-sm text-printhub-600 font-medium hover:underline">
                       View all {yesterdayOrders.length} orders
-                    </button>
+                    </Link>
                   )}
                 </div>
               ) : (
@@ -190,26 +204,23 @@ const AdminDashboard = () => {
         </div>
         
         <div className="space-y-6">
-          {/* Quick Links */}
+          {/* Admin Actions */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <button className="p-3 flex flex-col items-center justify-center bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                <Users className="h-6 w-6 text-printhub-600 mb-2" />
-                <span className="text-sm">Manage Staff</span>
-              </button>
-              <button className="p-3 flex flex-col items-center justify-center bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                <Package className="h-6 w-6 text-printhub-600 mb-2" />
-                <span className="text-sm">Inventory</span>
-              </button>
-              <button className="p-3 flex flex-col items-center justify-center bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                <Calendar className="h-6 w-6 text-printhub-600 mb-2" />
-                <span className="text-sm">Calendar</span>
-              </button>
-              <button className="p-3 flex flex-col items-center justify-center bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                <BarChart3 className="h-6 w-6 text-printhub-600 mb-2" />
-                <span className="text-sm">Reports</span>
-              </button>
+            <h2 className="text-lg font-semibold mb-4">Admin Actions</h2>
+            <div className="space-y-3">
+              <Link to="/dashboard/staff" className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-md transition">
+                <div className="flex items-center">
+                  <Users className="h-5 w-5 text-printhub-600 mr-2" />
+                  <span className="text-sm font-medium">Staff Management</span>
+                </div>
+              </Link>
+              
+              <Link to="/dashboard/revenue" className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-md transition">
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 text-printhub-600 mr-2" />
+                  <span className="text-sm font-medium">View Revenue Reports</span>
+                </div>
+              </Link>
             </div>
           </div>
           
@@ -234,6 +245,40 @@ const AdminDashboard = () => {
                 <span>All inventory levels are good</span>
               </div>
             )}
+          </div>
+          
+          {/* System Status */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold mb-4">System Status</h2>
+            <div className={`flex items-center p-3 rounded-md ${
+              inventory.ink.black < 10 || 
+              inventory.ink.cyan < 10 || 
+              inventory.ink.magenta < 10 || 
+              inventory.ink.yellow < 10 || 
+              inventory.paper['A4'] < 50
+                ? 'bg-red-50 text-red-700'
+                : 'bg-green-50 text-green-700'
+            }`}>
+              {inventory.ink.black < 10 || 
+               inventory.ink.cyan < 10 || 
+               inventory.ink.magenta < 10 || 
+               inventory.ink.yellow < 10 || 
+               inventory.paper['A4'] < 50 ? (
+                <AlertCircle className="h-5 w-5 mr-2" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 mr-2" />
+              )}
+              <span className="font-medium">
+                {inventory.ink.black < 10 || 
+                 inventory.ink.cyan < 10 || 
+                 inventory.ink.magenta < 10 || 
+                 inventory.ink.yellow < 10 || 
+                 inventory.paper['A4'] < 50
+                  ? 'Attention needed'
+                  : 'All systems operational'
+                }
+              </span>
+            </div>
           </div>
         </div>
       </div>
