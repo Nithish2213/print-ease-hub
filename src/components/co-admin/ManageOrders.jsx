@@ -13,9 +13,12 @@ import {
   Filter,
   Upload,
   Truck,
-  Check
+  Check,
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Progress } from "../ui/progress";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../ui/input-otp";
 
 const ManageOrders = () => {
   const { orders, updateOrderStatus, printerStatus, ORDER_STATUS } = useOrders();
@@ -24,16 +27,22 @@ const ManageOrders = () => {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [currentPrintOrder, setCurrentPrintOrder] = useState(null);
   const [otpVerification, setOtpVerification] = useState({ orderId: null, otp: '' });
+  const [printProgress, setPrintProgress] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter orders to show only active ones (not completed, rejected or delivered)
+  // Filter orders to show only active ones (not rejected)
   const activeOrders = orders.filter(
-    order => ![ORDER_STATUS.COMPLETED, ORDER_STATUS.REJECTED, ORDER_STATUS.DELIVERED].includes(order.status)
+    order => order.status !== ORDER_STATUS.REJECTED
   );
 
   // Apply status filter
-  const filteredOrders = statusFilter === 'all' 
-    ? activeOrders 
-    : activeOrders.filter(order => order.status === statusFilter);
+  const filteredOrders = activeOrders.filter(order => {
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesSearch = searchQuery === '' || 
+      order.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (order.paymentDetails.name && order.paymentDetails.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesStatus && matchesSearch;
+  });
 
   const toggleOrderExpansion = (orderId) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
@@ -53,11 +62,28 @@ const ManageOrders = () => {
 
   const handlePrintConfirm = () => {
     if (currentPrintOrder) {
-      updateOrderStatus(currentPrintOrder.id, ORDER_STATUS.PRINTING);
-      setShowPrintDialog(false);
-      setCurrentPrintOrder(null);
-      toast.success(`Printing started for order ${currentPrintOrder.id}`);
+      // Simulate printing progress
+      setPrintProgress(0);
+      const interval = setInterval(() => {
+        setPrintProgress(prev => {
+          const newProgress = prev + 10;
+          if (newProgress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              updateOrderStatus(currentPrintOrder.id, ORDER_STATUS.PRINTING);
+              setShowPrintDialog(false);
+              setCurrentPrintOrder(null);
+              toast.success(`Printing completed for order ${currentPrintOrder.id}`);
+            }, 500);
+          }
+          return newProgress;
+        });
+      }, 500);
     }
+  };
+
+  const handleOTPChange = (value) => {
+    setOtpVerification(prev => ({...prev, otp: value}));
   };
 
   const handleOTPVerification = (e) => {
@@ -87,6 +113,8 @@ const ManageOrders = () => {
       case ORDER_STATUS.PRINTING:
         return ORDER_STATUS.READY;
       case ORDER_STATUS.READY:
+        return ORDER_STATUS.COMPLETED;
+      case ORDER_STATUS.COMPLETED:
         return ORDER_STATUS.DELIVERED;
       default:
         return null;
@@ -101,6 +129,27 @@ const ManageOrders = () => {
     return sided === 'single' ? 'Single Sided' : 'Double Sided';
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case ORDER_STATUS.PENDING:
+        return 'status-pending';
+      case ORDER_STATUS.APPROVED:
+        return 'status-approved';
+      case ORDER_STATUS.PRINTING:
+        return 'status-printing';
+      case ORDER_STATUS.READY:
+        return 'status-ready';
+      case ORDER_STATUS.COMPLETED:
+        return 'status-completed';
+      case ORDER_STATUS.DELIVERED:
+        return 'bg-green-100 text-green-700';
+      case ORDER_STATUS.REJECTED:
+        return 'bg-red-100 text-red-700';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -110,6 +159,19 @@ const ManageOrders = () => {
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Search */}
+          <div className="relative mr-2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search orders..."
+              className="pl-10 pr-4 py-2 border rounded-md w-48 focus:outline-none focus:ring-2 focus:ring-printhub-300"
+            />
+          </div>
+          
+          {/* Filter */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <select
@@ -122,6 +184,8 @@ const ManageOrders = () => {
               <option value={ORDER_STATUS.APPROVED}>Approved</option>
               <option value={ORDER_STATUS.PRINTING}>Printing</option>
               <option value={ORDER_STATUS.READY}>Ready</option>
+              <option value={ORDER_STATUS.COMPLETED}>Completed</option>
+              <option value={ORDER_STATUS.DELIVERED}>Delivered</option>
             </select>
           </div>
         </div>
@@ -134,16 +198,15 @@ const ManageOrders = () => {
           <form onSubmit={handleOTPVerification}>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="md:flex-grow">
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">Enter OTP for Order #{otpVerification.orderId}</label>
-                <input
-                  id="otp"
-                  type="text"
-                  value={otpVerification.otp}
-                  onChange={(e) => setOtpVerification({...otpVerification, otp: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Enter 4-digit OTP"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Enter OTP for Order #{otpVerification.orderId}</label>
+                <InputOTP maxLength={4} value={otpVerification.otp} onChange={handleOTPChange}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
               <div className="flex items-end">
                 <button type="submit" className="btn-primary">Verify OTP & Mark as Delivered</button>
@@ -164,7 +227,7 @@ const ManageOrders = () => {
         <div className="bg-white rounded-lg shadow-sm p-8 border border-gray-200 text-center">
           <Package className="h-12 w-12 mx-auto text-gray-300 mb-2" />
           <h3 className="text-lg font-medium text-gray-700">No Orders Found</h3>
-          <p className="text-gray-500">There are no active orders with the selected filter.</p>
+          <p className="text-gray-500">There are no orders with the selected filter.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -182,13 +245,7 @@ const ManageOrders = () => {
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <span className={`status-badge mr-3 ${
-                      order.status === ORDER_STATUS.PENDING ? 'status-pending' :
-                      order.status === ORDER_STATUS.APPROVED ? 'status-approved' :
-                      order.status === ORDER_STATUS.PRINTING ? 'status-printing' :
-                      order.status === ORDER_STATUS.READY ? 'status-ready' :
-                      'status-delivered'
-                    }`}>
+                    <span className={`status-badge mr-3 ${getStatusColor(order.status)}`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                     <button 
@@ -308,7 +365,7 @@ const ManageOrders = () => {
                           <button 
                             onClick={() => handleStatusChange(order.id, getNextStatus(order.status))}
                             className="btn-primary inline-flex items-center"
-                            disabled={printerStatus === 'offline'}
+                            disabled={printerStatus === 'offline' && order.status !== ORDER_STATUS.READY}
                           >
                             {order.status === ORDER_STATUS.PENDING ? (
                               <>
@@ -327,6 +384,11 @@ const ManageOrders = () => {
                               </>
                             ) : order.status === ORDER_STATUS.READY ? (
                               <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Mark as Completed
+                              </>
+                            ) : order.status === ORDER_STATUS.COMPLETED ? (
+                              <>
                                 <Truck className="h-4 w-4 mr-2" />
                                 Mark as Delivered
                               </>
@@ -343,7 +405,7 @@ const ManageOrders = () => {
         </div>
       )}
 
-      {/* Print Dialog with enhanced UI */}
+      {/* Enhanced Print Dialog */}
       {showPrintDialog && currentPrintOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4">
@@ -431,23 +493,34 @@ const ManageOrders = () => {
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3">
-              <button 
-                onClick={() => setShowPrintDialog(false)}
-                className="btn-secondary flex items-center"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel
-              </button>
-              
-              <button 
-                onClick={handlePrintConfirm}
-                className="btn-primary flex items-center"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print Document
-              </button>
-            </div>
+            {printProgress > 0 && printProgress < 100 ? (
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Printing in progress...</span>
+                  <span className="text-sm">{printProgress}%</span>
+                </div>
+                <Progress value={printProgress} className="h-2" />
+              </div>
+            ) : (
+              <div className="flex justify-end space-x-3">
+                <button 
+                  onClick={() => setShowPrintDialog(false)}
+                  className="btn-secondary flex items-center"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel
+                </button>
+                
+                <button 
+                  onClick={handlePrintConfirm}
+                  className="btn-primary flex items-center"
+                  disabled={printProgress > 0}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Document
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
