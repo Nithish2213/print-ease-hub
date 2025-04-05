@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import { 
@@ -10,7 +10,6 @@ import {
   Home, 
   FileText,
   Clock,
-  Settings,
   Users,
   Printer,
   BarChart3,
@@ -23,6 +22,7 @@ const Layout = ({ children }) => {
   const { currentUser, logout, isAdmin, isCoAdmin, isStudent } = useAuth();
   const { printerStatus } = useOrders();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -31,6 +31,10 @@ const Layout = ({ children }) => {
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  const isActive = (path) => {
+    return location.pathname === path;
   };
 
   const NavItem = ({ icon: Icon, label, onClick, active = false }) => (
@@ -115,36 +119,90 @@ const Layout = ({ children }) => {
         <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 pt-5">
           <nav className="flex-1 px-4 space-y-1">
             <ul className="space-y-1">
-              <NavItem icon={Home} label="Dashboard" onClick={() => navigate('/dashboard')} />
+              <NavItem 
+                icon={Home} 
+                label="Dashboard" 
+                onClick={() => navigate('/dashboard')} 
+                active={isActive('/dashboard')}
+              />
               
               {/* Student specific navigation */}
               {isStudent && (
                 <>
-                  <NavItem icon={FileText} label="Upload Files" onClick={() => navigate('/upload')} />
-                  <NavItem icon={Clock} label="Order History" onClick={() => navigate('/orders')} />
+                  <NavItem 
+                    icon={FileText} 
+                    label="New Print Job" 
+                    onClick={() => navigate('/dashboard/print')} 
+                    active={isActive('/dashboard/print')}
+                  />
+                  <NavItem 
+                    icon={Clock} 
+                    label="Track Orders" 
+                    onClick={() => navigate('/dashboard/tracking')} 
+                    active={isActive('/dashboard/tracking')}
+                  />
+                  <NavItem 
+                    icon={FileText} 
+                    label="Order History" 
+                    onClick={() => navigate('/dashboard/orders')} 
+                    active={isActive('/dashboard/orders')}
+                  />
                 </>
               )}
               
               {/* Co-Admin specific navigation */}
               {isCoAdmin && (
                 <>
-                  <NavItem icon={FileText} label="Manage Orders" onClick={() => navigate('/manage-orders')} />
-                  <NavItem icon={Printer} label="Printer Controls" onClick={() => navigate('/printer')} />
-                  <NavItem icon={Package} label="Inventory" onClick={() => navigate('/inventory')} />
+                  <NavItem 
+                    icon={FileText} 
+                    label="Manage Orders" 
+                    onClick={() => navigate('/manage-orders')} 
+                    active={isActive('/manage-orders')}
+                  />
+                  <NavItem 
+                    icon={Printer} 
+                    label="Printer Controls" 
+                    onClick={() => navigate('/printer')} 
+                    active={isActive('/printer')}
+                  />
+                  <NavItem 
+                    icon={Package} 
+                    label="Inventory" 
+                    onClick={() => navigate('/inventory')} 
+                    active={isActive('/inventory')}
+                  />
                 </>
               )}
               
               {/* Admin specific navigation */}
               {isAdmin && (
                 <>
-                  <NavItem icon={BarChart3} label="Analytics" onClick={() => navigate('/analytics')} />
-                  <NavItem icon={Users} label="Staff Management" onClick={() => navigate('/staff')} />
-                  <NavItem icon={Calendar} label="Calendar" onClick={() => navigate('/calendar')} />
-                  <NavItem icon={Package} label="Inventory" onClick={() => navigate('/inventory')} />
+                  <NavItem 
+                    icon={BarChart3} 
+                    label="Analytics" 
+                    onClick={() => navigate('/analytics')} 
+                    active={isActive('/analytics')}
+                  />
+                  <NavItem 
+                    icon={Users} 
+                    label="Staff Management" 
+                    onClick={() => navigate('/staff')} 
+                    active={isActive('/staff')}
+                  />
+                  <NavItem 
+                    icon={Calendar} 
+                    label="Calendar" 
+                    onClick={() => navigate('/calendar')} 
+                    active={isActive('/calendar')}
+                  />
+                  <NavItem 
+                    icon={Package} 
+                    label="Inventory" 
+                    onClick={() => navigate('/inventory')} 
+                    active={isActive('/inventory')}
+                  />
                 </>
               )}
-              
-              <NavItem icon={Settings} label="Settings" onClick={() => navigate('/settings')} />
             </ul>
           </nav>
         </aside>
@@ -169,36 +227,90 @@ const Layout = ({ children }) => {
                 </div>
                 <nav className="mt-5 px-3 space-y-1">
                   <ul className="space-y-1">
-                    <NavItem icon={Home} label="Dashboard" onClick={() => { navigate('/dashboard'); toggleSidebar(); }} />
+                    <NavItem 
+                      icon={Home} 
+                      label="Dashboard" 
+                      onClick={() => { navigate('/dashboard'); toggleSidebar(); }} 
+                      active={isActive('/dashboard')}
+                    />
                     
                     {/* Student specific navigation */}
                     {isStudent && (
                       <>
-                        <NavItem icon={FileText} label="Upload Files" onClick={() => { navigate('/upload'); toggleSidebar(); }} />
-                        <NavItem icon={Clock} label="Order History" onClick={() => { navigate('/orders'); toggleSidebar(); }} />
+                        <NavItem 
+                          icon={FileText} 
+                          label="New Print Job" 
+                          onClick={() => { navigate('/dashboard/print'); toggleSidebar(); }} 
+                          active={isActive('/dashboard/print')}
+                        />
+                        <NavItem 
+                          icon={Clock} 
+                          label="Track Orders" 
+                          onClick={() => { navigate('/dashboard/tracking'); toggleSidebar(); }} 
+                          active={isActive('/dashboard/tracking')}
+                        />
+                        <NavItem 
+                          icon={FileText} 
+                          label="Order History" 
+                          onClick={() => { navigate('/dashboard/orders'); toggleSidebar(); }} 
+                          active={isActive('/dashboard/orders')}
+                        />
                       </>
                     )}
                     
                     {/* Co-Admin specific navigation */}
                     {isCoAdmin && (
                       <>
-                        <NavItem icon={FileText} label="Manage Orders" onClick={() => { navigate('/manage-orders'); toggleSidebar(); }} />
-                        <NavItem icon={Printer} label="Printer Controls" onClick={() => { navigate('/printer'); toggleSidebar(); }} />
-                        <NavItem icon={Package} label="Inventory" onClick={() => { navigate('/inventory'); toggleSidebar(); }} />
+                        <NavItem 
+                          icon={FileText} 
+                          label="Manage Orders" 
+                          onClick={() => { navigate('/manage-orders'); toggleSidebar(); }} 
+                          active={isActive('/manage-orders')}
+                        />
+                        <NavItem 
+                          icon={Printer} 
+                          label="Printer Controls" 
+                          onClick={() => { navigate('/printer'); toggleSidebar(); }} 
+                          active={isActive('/printer')}
+                        />
+                        <NavItem 
+                          icon={Package} 
+                          label="Inventory" 
+                          onClick={() => { navigate('/inventory'); toggleSidebar(); }} 
+                          active={isActive('/inventory')}
+                        />
                       </>
                     )}
                     
                     {/* Admin specific navigation */}
                     {isAdmin && (
                       <>
-                        <NavItem icon={BarChart3} label="Analytics" onClick={() => { navigate('/analytics'); toggleSidebar(); }} />
-                        <NavItem icon={Users} label="Staff Management" onClick={() => { navigate('/staff'); toggleSidebar(); }} />
-                        <NavItem icon={Calendar} label="Calendar" onClick={() => { navigate('/calendar'); toggleSidebar(); }} />
-                        <NavItem icon={Package} label="Inventory" onClick={() => { navigate('/inventory'); toggleSidebar(); }} />
+                        <NavItem 
+                          icon={BarChart3} 
+                          label="Analytics" 
+                          onClick={() => { navigate('/analytics'); toggleSidebar(); }} 
+                          active={isActive('/analytics')}
+                        />
+                        <NavItem 
+                          icon={Users} 
+                          label="Staff Management" 
+                          onClick={() => { navigate('/staff'); toggleSidebar(); }} 
+                          active={isActive('/staff')}
+                        />
+                        <NavItem 
+                          icon={Calendar} 
+                          label="Calendar" 
+                          onClick={() => { navigate('/calendar'); toggleSidebar(); }} 
+                          active={isActive('/calendar')}
+                        />
+                        <NavItem 
+                          icon={Package} 
+                          label="Inventory" 
+                          onClick={() => { navigate('/inventory'); toggleSidebar(); }} 
+                          active={isActive('/inventory')}
+                        />
                       </>
                     )}
-                    
-                    <NavItem icon={Settings} label="Settings" onClick={() => { navigate('/settings'); toggleSidebar(); }} />
                   </ul>
                 </nav>
               </div>

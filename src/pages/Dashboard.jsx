@@ -7,8 +7,11 @@ import Layout from '../components/Layout';
 import StudentDashboard from '../components/student/StudentDashboard';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import CoAdminDashboard from '../components/co-admin/CoAdminDashboard';
+import PrintDetails from '../components/student/PrintDetails';
+import OrderTracking from '../components/student/OrderTracking';
+import OrderHistory from '../components/student/OrderHistory';
 
-const Dashboard = () => {
+const Dashboard = ({ content }) => {
   const { currentUser } = useAuth();
 
   // If not logged in, redirect to login page
@@ -16,15 +19,28 @@ const Dashboard = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Render appropriate dashboard based on user role
-  const renderDashboard = () => {
+  // Render appropriate dashboard based on user role and content type
+  const renderContent = () => {
+    // Handle student-specific content views
+    if (currentUser.role === ROLES.STUDENT) {
+      switch (content) {
+        case 'print':
+          return <PrintDetails />;
+        case 'tracking':
+          return <OrderTracking />;
+        case 'orders':
+          return <OrderHistory />;
+        default:
+          return <StudentDashboard />;
+      }
+    }
+
+    // For admin and co-admin, always show their dashboards
     switch (currentUser.role) {
       case ROLES.ADMIN:
         return <AdminDashboard />;
       case ROLES.CO_ADMIN:
         return <CoAdminDashboard />;
-      case ROLES.STUDENT:
-        return <StudentDashboard />;
       default:
         return <div>Unknown user role</div>;
     }
@@ -32,7 +48,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      {renderDashboard()}
+      {renderContent()}
     </Layout>
   );
 };

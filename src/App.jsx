@@ -8,6 +8,9 @@ import { AuthProvider } from "./context/AuthContext";
 import { OrderProvider } from "./context/OrderContext";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import PrintDetails from "./components/student/PrintDetails";
+import OrderTracking from "./components/student/OrderTracking";
+import OrderHistory from "./components/student/OrderHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +26,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/print" element={<Dashboard content="print" />} />
+              <Route path="/dashboard/tracking" element={<Dashboard content="tracking" />} />
+              <Route path="/dashboard/orders" element={<Dashboard content="orders" />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
