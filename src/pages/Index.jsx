@@ -16,6 +16,15 @@ const Index = () => {
     }
   }, [currentUser, navigate]);
 
+  const handleGetStarted = () => {
+    navigate('/');
+    // Scroll to login form
+    const loginForm = document.querySelector('#login-section');
+    if (loginForm) {
+      loginForm.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const features = [
     {
       icon: Upload,
@@ -66,7 +75,7 @@ const Index = () => {
               </button>
             </div>
           </div>
-          <div className="md:w-1/2">
+          <div id="login-section" className="md:w-1/2">
             <LoginForm />
           </div>
         </div>
@@ -94,7 +103,10 @@ const Index = () => {
               <h3 className="text-2xl font-bold mb-2">Ready to start printing?</h3>
               <p className="text-printhub-100">Sign in and upload your documents now.</p>
             </div>
-            <button className="bg-white text-printhub-700 px-6 py-3 rounded-md font-medium hover:bg-printhub-50 transition-colors">
+            <button 
+              onClick={handleGetStarted} 
+              className="bg-white text-printhub-700 px-6 py-3 rounded-md font-medium hover:bg-printhub-50 transition-colors"
+            >
               Get Started
             </button>
           </div>

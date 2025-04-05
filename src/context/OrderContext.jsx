@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from './AuthContext';
 
 const OrderContext = createContext(null);
 
@@ -14,6 +15,8 @@ export const ORDER_STATUS = {
 };
 
 export const OrderProvider = ({ children }) => {
+  const { currentUser } = useAuth();
+
   const [orders, setOrders] = useState([
     {
       id: 'ORD-001',
@@ -70,6 +73,7 @@ export const OrderProvider = ({ children }) => {
   });
 
   const [printerStatus, setPrinterStatus] = useState('online'); // online, busy, offline
+  const [notifications, setNotifications] = useState([]);
 
   // Create a new order
   const createOrder = (orderData) => {
@@ -83,6 +87,16 @@ export const OrderProvider = ({ children }) => {
     
     setOrders([newOrder, ...orders]);
     toast.success(`Order ${newOrder.id} has been created!`);
+    
+    // Add notification for co-admin
+    addNotification({
+      type: 'new-order',
+      orderId: newOrder.id,
+      message: `New order received: ${newOrder.id}`,
+      read: false,
+      timestamp: new Date().toISOString(),
+    });
+    
     return newOrder.id;
   };
 
@@ -99,6 +113,18 @@ export const OrderProvider = ({ children }) => {
           toast.success(`OTP generated for order ${orderId}: ${otp}`);
         }
         
+        // Add notification for student
+        if (order.status !== newStatus) {
+          addNotification({
+            type: 'status-change',
+            orderId: orderId,
+            message: `Order ${orderId} status updated to ${newStatus}`,
+            forUserId: order.userId,
+            read: false,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        
         return {
           ...order,
           status: newStatus,
@@ -111,6 +137,27 @@ export const OrderProvider = ({ children }) => {
     if (newStatus !== ORDER_STATUS.COMPLETED) {
       toast.success(`Order ${orderId} status updated to ${newStatus}`);
     }
+  };
+
+  // Add notification
+  const addNotification = (notification) => {
+    setNotifications(prev => [notification, ...prev]);
+  };
+
+  // Mark notification as read
+  const markNotificationAsRead = (notificationId) => {
+    setNotifications(notifications.map(notif => 
+      notif.id === notificationId ? { ...notif, read: true } : notif
+    ));
+  };
+
+  // Get notifications for current user
+  const getUserNotifications = () => {
+    if (!currentUser) return [];
+    
+    return notifications.filter(notif => 
+      !notif.forUserId || notif.forUserId === currentUser.id
+    );
   };
 
   // Update inventory
@@ -145,12 +192,14 @@ export const OrderProvider = ({ children }) => {
     orders,
     inventory,
     printerStatus,
+    notifications: getUserNotifications(),
     createOrder,
     updateOrderStatus,
     updateInventory,
     togglePrinterStatus,
     getUserOrders,
     getOrderById,
+    markNotificationAsRead,
     ORDER_STATUS
   };
 

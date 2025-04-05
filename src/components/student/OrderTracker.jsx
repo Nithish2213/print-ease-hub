@@ -78,8 +78,8 @@ const OrderTracker = ({ status }) => {
               
               {/* Connector line */}
               {index < steps.length - 1 && (
-                <div className="flex-1 h-0.5 mx-2 
-                  ${index < currentStepIndex ? 'bg-status-completed' : 'bg-gray-200'}"
+                <div className={`flex-1 h-0.5 mx-2 
+                  ${index < currentStepIndex ? 'bg-status-completed' : 'bg-gray-200'}`}
                 ></div>
               )}
             </React.Fragment>

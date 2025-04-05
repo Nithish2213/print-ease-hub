@@ -20,6 +20,7 @@ const USERS = [
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState(USERS);
 
   useEffect(() => {
     // Check for saved user in localStorage on app load
@@ -31,7 +32,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (email, password) => {
-    const user = USERS.find(
+    const user = users.find(
       (user) => user.email === email && user.password === password
     );
 
@@ -50,16 +51,53 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signup = (name, email, password) => {
+    // Check if email already exists
+    const existingUser = users.find(user => user.email === email);
+    if (existingUser) {
+      toast.error('Email already in use');
+      return false;
+    }
+    
+    // Create new user with student role
+    const newUser = {
+      id: users.length + 1,
+      email,
+      password,
+      name,
+      role: ROLES.STUDENT
+    };
+    
+    // Add to users array
+    setUsers([...users, newUser]);
+    
+    toast.success('Account created successfully!');
+    return true;
+  };
+
   const logout = () => {
     localStorage.removeItem('printHubUser');
     setCurrentUser(null);
     toast.info('You have been logged out');
   };
 
+  const resetPassword = (email) => {
+    const user = users.find(user => user.email === email);
+    if (!user) {
+      toast.error('No account found with this email');
+      return false;
+    }
+    
+    toast.success('Password reset instructions sent to your email');
+    return true;
+  };
+
   const value = {
     currentUser,
     login,
     logout,
+    signup,
+    resetPassword,
     isAdmin: currentUser?.role === ROLES.ADMIN,
     isCoAdmin: currentUser?.role === ROLES.CO_ADMIN,
     isStudent: currentUser?.role === ROLES.STUDENT,

@@ -9,8 +9,11 @@ import {
   ChevronDown, 
   ChevronUp,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Server,
+  Zap
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CoAdminDashboard = () => {
   const { currentUser } = useAuth();
@@ -23,6 +26,7 @@ const CoAdminDashboard = () => {
   } = useOrders();
   
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [serverStarting, setServerStarting] = useState(false);
 
   // Filter orders to show only active ones
   const activeOrders = orders.filter(
@@ -35,6 +39,20 @@ const CoAdminDashboard = () => {
 
   const handleStatusChange = (orderId, newStatus) => {
     updateOrderStatus(orderId, newStatus);
+  };
+
+  const handleServerStart = () => {
+    if (printerStatus === 'offline') {
+      setServerStarting(true);
+      // Simulate server starting process
+      setTimeout(() => {
+        togglePrinterStatus('online');
+        setServerStarting(false);
+        toast.success('Printer server started successfully!');
+      }, 2000);
+    } else {
+      toast.info('Printer server is already running');
+    }
   };
 
   const getNextStatus = (currentStatus) => {
@@ -74,17 +92,17 @@ const CoAdminDashboard = () => {
             <div className="text-sm text-gray-500">Control the printer server status</div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center">
               <div className={`h-3 w-3 rounded-full mr-2 ${
-                printerStatus === 'online' ? 'bg-green-500 animate-pulse-slow' : 
-                printerStatus === 'busy' ? 'bg-yellow-500 animate-pulse-slow' : 
+                printerStatus === 'online' ? 'bg-green-500 animate-pulse' : 
+                printerStatus === 'busy' ? 'bg-yellow-500 animate-pulse' : 
                 'bg-red-500'
               }`} />
               <span className="text-sm font-medium capitalize">{printerStatus}</span>
             </div>
             
-            <div className="border-l border-gray-300 h-8"></div>
+            <div className="border-l border-gray-300 h-8 hidden sm:block"></div>
             
             <div className="flex space-x-2">
               <button 
@@ -94,6 +112,7 @@ const CoAdminDashboard = () => {
                     ? 'bg-green-100 text-green-700 border border-green-300' 
                     : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                 }`}
+                disabled={serverStarting}
               >
                 Online
               </button>
@@ -104,6 +123,7 @@ const CoAdminDashboard = () => {
                     ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' 
                     : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                 }`}
+                disabled={serverStarting}
               >
                 Busy
               </button>
@@ -114,6 +134,7 @@ const CoAdminDashboard = () => {
                     ? 'bg-red-100 text-red-700 border border-red-300' 
                     : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                 }`}
+                disabled={serverStarting}
               >
                 Offline
               </button>
@@ -122,17 +143,41 @@ const CoAdminDashboard = () => {
         </div>
         
         <div className="border-t border-gray-200 pt-4">
-          <div className="text-sm text-gray-600">
-            <div className="bg-amber-50 p-3 rounded-md border border-amber-100 flex items-start">
-              <AlertCircle className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0" />
-              <div>
-                <p className="text-amber-800 font-medium">Important</p>
-                <p className="text-amber-700">
-                  Make sure to change the printer status to "Offline" when you leave or when maintenance is required. 
-                  Set to "Busy" when the queue is full.
-                </p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div className="text-sm text-gray-600 mb-4 md:mb-0">
+              <div className="bg-amber-50 p-3 rounded-md border border-amber-100 flex items-start">
+                <AlertCircle className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-amber-800 font-medium">Important</p>
+                  <p className="text-amber-700">
+                    Make sure to change the printer status when you leave or when maintenance is required.
+                  </p>
+                </div>
               </div>
             </div>
+            
+            {printerStatus === 'offline' && (
+              <button 
+                onClick={handleServerStart}
+                disabled={serverStarting}
+                className="btn-primary flex items-center space-x-2"
+              >
+                {serverStarting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Starting Server...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-5 w-5" />
+                    <span>Start Printer Server</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -198,6 +243,7 @@ const CoAdminDashboard = () => {
                               <li key={index} className="flex items-center p-2 bg-gray-50 rounded-md">
                                 <FileText className="h-4 w-4 text-printhub-600 mr-2" />
                                 <span className="text-sm">{file.name}</span>
+                                <span className="text-xs text-gray-500 ml-auto">{file.size} ({file.pages} pages)</span>
                               </li>
                             ))}
                           </ul>
@@ -250,6 +296,7 @@ const CoAdminDashboard = () => {
                             <button 
                               onClick={() => handleStatusChange(order.id, getNextStatus(order.status))}
                               className="btn-primary inline-flex items-center"
+                              disabled={printerStatus === 'offline'}
                             >
                               <CheckCircle2 className="h-4 w-4 mr-2" />
                               {order.status === ORDER_STATUS.PENDING ? 'Approve' : 
