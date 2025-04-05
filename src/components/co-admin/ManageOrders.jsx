@@ -10,7 +10,10 @@ import {
   Printer,
   Package,
   Clock,
-  Filter
+  Filter,
+  Upload,
+  Truck,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,9 +25,9 @@ const ManageOrders = () => {
   const [currentPrintOrder, setCurrentPrintOrder] = useState(null);
   const [otpVerification, setOtpVerification] = useState({ orderId: null, otp: '' });
 
-  // Filter orders to show only active ones
+  // Filter orders to show only active ones (not completed, rejected or delivered)
   const activeOrders = orders.filter(
-    order => order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.REJECTED
+    order => ![ORDER_STATUS.COMPLETED, ORDER_STATUS.REJECTED, ORDER_STATUS.DELIVERED].includes(order.status)
   );
 
   // Apply status filter
@@ -67,9 +70,9 @@ const ManageOrders = () => {
     }
     
     if (order.otp === otpVerification.otp) {
-      updateOrderStatus(otpVerification.orderId, ORDER_STATUS.COMPLETED);
+      updateOrderStatus(otpVerification.orderId, ORDER_STATUS.DELIVERED);
       setOtpVerification({ orderId: null, otp: '' });
-      toast.success('OTP verified successfully. Order marked as completed.');
+      toast.success('OTP verified successfully. Order marked as delivered.');
     } else {
       toast.error('Invalid OTP. Please try again.');
     }
@@ -84,7 +87,7 @@ const ManageOrders = () => {
       case ORDER_STATUS.PRINTING:
         return ORDER_STATUS.READY;
       case ORDER_STATUS.READY:
-        return ORDER_STATUS.COMPLETED;
+        return ORDER_STATUS.DELIVERED;
       default:
         return null;
     }
@@ -124,7 +127,7 @@ const ManageOrders = () => {
         </div>
       </div>
 
-      {/* OTP Verification for order completion */}
+      {/* OTP Verification for order delivery */}
       {otpVerification.orderId && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Verify OTP to Complete Order</h2>
@@ -143,7 +146,7 @@ const ManageOrders = () => {
                 />
               </div>
               <div className="flex items-end">
-                <button type="submit" className="btn-primary">Verify OTP</button>
+                <button type="submit" className="btn-primary">Verify OTP & Mark as Delivered</button>
                 <button 
                   type="button" 
                   className="ml-2 btn-secondary" 
@@ -183,7 +186,8 @@ const ManageOrders = () => {
                       order.status === ORDER_STATUS.PENDING ? 'status-pending' :
                       order.status === ORDER_STATUS.APPROVED ? 'status-approved' :
                       order.status === ORDER_STATUS.PRINTING ? 'status-printing' :
-                      'status-ready'
+                      order.status === ORDER_STATUS.READY ? 'status-ready' :
+                      'status-delivered'
                     }`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
@@ -294,22 +298,39 @@ const ManageOrders = () => {
                             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
                           >
                             <Clock className="h-4 w-4 mr-1" />
-                            Verify OTP for Pickup
+                            Verify OTP & Deliver
                           </button>
                         )}
                       </div>
                       
                       <div className="flex items-center space-x-3">
-                        {getNextStatus(order.status) && order.status !== ORDER_STATUS.READY && (
+                        {getNextStatus(order.status) && (
                           <button 
                             onClick={() => handleStatusChange(order.id, getNextStatus(order.status))}
                             className="btn-primary inline-flex items-center"
                             disabled={printerStatus === 'offline'}
                           >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            {order.status === ORDER_STATUS.PENDING ? 'Approve' : 
-                            order.status === ORDER_STATUS.APPROVED ? 'Start Printing' :
-                            order.status === ORDER_STATUS.PRINTING ? 'Mark as Ready' : ''}
+                            {order.status === ORDER_STATUS.PENDING ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Approve
+                              </>
+                            ) : order.status === ORDER_STATUS.APPROVED ? (
+                              <>
+                                <Printer className="h-4 w-4 mr-2" />
+                                Start Printing
+                              </>
+                            ) : order.status === ORDER_STATUS.PRINTING ? (
+                              <>
+                                <Package className="h-4 w-4 mr-2" />
+                                Mark as Ready
+                              </>
+                            ) : order.status === ORDER_STATUS.READY ? (
+                              <>
+                                <Truck className="h-4 w-4 mr-2" />
+                                Mark as Delivered
+                              </>
+                            ) : null}
                           </button>
                         )}
                       </div>
@@ -322,12 +343,12 @@ const ManageOrders = () => {
         </div>
       )}
 
-      {/* Print Dialog */}
+      {/* Print Dialog with enhanced UI */}
       {showPrintDialog && currentPrintOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Print Preview</h3>
+              <h3 className="text-xl font-bold">Print Document</h3>
               <button 
                 onClick={() => setShowPrintDialog(false)} 
                 className="text-gray-500 hover:text-gray-700"
@@ -336,62 +357,95 @@ const ManageOrders = () => {
               </button>
             </div>
             
-            <div className="border p-4 bg-gray-50 mb-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="font-medium">Order #{currentPrintOrder.id}</h4>
-                  <p className="text-sm text-gray-500">
-                    {currentPrintOrder.files.reduce((total, file) => total + file.pages, 0) * currentPrintOrder.options.copies} total pages
-                  </p>
-                </div>
-                <div>
-                  <Printer className="h-6 w-6 text-gray-500" />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                {currentPrintOrder.files.map((file, index) => (
-                  <div key={index} className="p-2 bg-white border rounded flex justify-between">
-                    <div className="flex items-center">
-                      <FileText className="h-4 w-4 mr-2 text-printhub-500" />
-                      <span>{file.name}</span>
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      {file.pages} pages × {currentPrintOrder.options.copies} copies
-                    </span>
+            <div className="border rounded-md overflow-hidden mb-6">
+              {/* Print Preview Header */}
+              <div className="bg-gray-100 p-4 border-b">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="font-medium">Print Preview - Order #{currentPrintOrder.id}</h4>
+                    <p className="text-sm text-gray-600">
+                      {currentPrintOrder.files.reduce((total, file) => total + file.pages, 0) * currentPrintOrder.options.copies} total pages
+                    </p>
                   </div>
-                ))}
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-600 mr-3">
+                      Printer Status: <span className="inline-flex items-center font-medium">
+                        <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5"></div>Ready
+                      </span>
+                    </span>
+                    <Printer className="h-6 w-6 text-gray-500" />
+                  </div>
+                </div>
               </div>
               
-              <div className="grid grid-cols-2 mt-4 text-sm">
-                <div className="font-medium">Print settings:</div>
-                <div>
-                  {formatPrintType(currentPrintOrder.options.printType)}, 
-                  {formatSided(currentPrintOrder.options.sided)}, 
-                  {currentPrintOrder.options.paperSize}
+              {/* Document Preview */}
+              <div className="p-4 bg-white border-b">
+                <div className="aspect-ratio-box" style={{ position: 'relative', paddingTop: '141.4%', overflow: 'hidden', background: '#f9f9f9', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {currentPrintOrder.files.map((file, index) => (
+                      <div key={index} className="text-center" style={{ maxWidth: '90%', maxHeight: '90%' }}>
+                        <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                        <p className="text-sm font-medium text-gray-700">{file.name}</p>
+                        <p className="text-xs text-gray-500">Page 1 of {file.pages}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              </div>
+              
+              {/* Print Settings */}
+              <div className="p-4 bg-gray-50">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Print Settings</h4>
                 
-                {currentPrintOrder.options.pageRange !== 'all' && (
-                  <>
-                    <div className="font-medium">Page range:</div>
-                    <div>{currentPrintOrder.options.pageRange}</div>
-                  </>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Print Type</span>
+                    <span>{formatPrintType(currentPrintOrder.options.printType)}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Copies</span>
+                    <span>{currentPrintOrder.options.copies}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Sided</span>
+                    <span>{formatSided(currentPrintOrder.options.sided)}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Paper Size</span>
+                    <span>{currentPrintOrder.options.paperSize}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Page Range</span>
+                    <span>{currentPrintOrder.options.pageRange}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="block text-gray-500 text-xs mb-1">Total Cost</span>
+                    <span className="font-medium">₹{currentPrintOrder.cost.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             </div>
             
             <div className="flex justify-end space-x-3">
               <button 
                 onClick={() => setShowPrintDialog(false)}
-                className="btn-secondary"
+                className="btn-secondary flex items-center"
               >
+                <XCircle className="h-4 w-4 mr-2" />
                 Cancel
               </button>
+              
               <button 
                 onClick={handlePrintConfirm}
-                className="btn-primary"
+                className="btn-primary flex items-center"
               >
-                Confirm and Print
+                <Printer className="h-4 w-4 mr-2" />
+                Print Document
               </button>
             </div>
           </div>

@@ -11,7 +11,10 @@ import {
   WifiOff,
   RefreshCw,
   FileWarning,
-  FilePlus
+  FilePlus,
+  Search,
+  Sliders,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +30,7 @@ const PrinterControls = () => {
     maintenance: false
   });
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('basic'); // basic or advanced
   
   const handlePrinterStatusChange = (status) => {
     setLoading(true);
@@ -82,6 +86,13 @@ const PrinterControls = () => {
     }, duration / 20);
   };
   
+  const handleDriverUpdate = () => {
+    simulateTask('Updating printer drivers', 5000);
+    setTimeout(() => {
+      toast.success('Printer drivers updated to version 2.1.5');
+    }, 5000);
+  };
+  
   // Calculate ink levels
   const calculateInkStatus = () => {
     const { black, cyan, magenta, yellow } = inventory.ink;
@@ -131,7 +142,32 @@ const PrinterControls = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Printer Controls</h1>
-        <p className="text-gray-600">Manage printer settings and status</p>
+        <p className="text-gray-600">Manage printer settings, status and maintenance</p>
+      </div>
+      
+      <div className="flex justify-end mb-4">
+        <div className="inline-flex rounded-md shadow-sm">
+          <button
+            onClick={() => setViewMode('basic')}
+            className={`px-4 py-2 text-sm font-medium rounded-l-md ${
+              viewMode === 'basic' 
+              ? 'bg-printhub-600 text-white' 
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border border-gray-300`}
+          >
+            Basic
+          </button>
+          <button
+            onClick={() => setViewMode('advanced')}
+            className={`px-4 py-2 text-sm font-medium rounded-r-md ${
+              viewMode === 'advanced' 
+              ? 'bg-printhub-600 text-white' 
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border border-l-0 border-gray-300`}
+          >
+            Advanced
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -417,6 +453,61 @@ const PrinterControls = () => {
                 </select>
               </div>
             </div>
+            
+            {/* Advanced Settings */}
+            {viewMode === 'advanced' && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-medium mb-4">Advanced Settings</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Color Calibration</label>
+                    <select
+                      name="colorCalibration"
+                      className="w-full border border-gray-300 rounded px-3 py-2 disabled:opacity-50"
+                      disabled={!isActive || printerSettings.maintenance}
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="vivid">Vivid Colors</option>
+                      <option value="professional">Professional</option>
+                      <option value="custom">Custom Profile</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Network Configuration</label>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => simulateTask('Network diagnostics')} 
+                        className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-sm"
+                      >
+                        Diagnostic
+                      </button>
+                      <button 
+                        onClick={() => simulateTask('IP Configuration')} 
+                        className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded text-sm"
+                      >
+                        IP Settings
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Firmware</label>
+                    <div className="flex flex-col space-y-2">
+                      <div className="text-xs text-gray-500">Current version: v2.1.4</div>
+                      <button 
+                        onClick={handleDriverUpdate} 
+                        className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-sm flex items-center justify-center"
+                      >
+                        <Download className="h-4 w-4 mr-1.5" />
+                        Update Drivers
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between">
               <button

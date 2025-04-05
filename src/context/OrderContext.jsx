@@ -147,12 +147,12 @@ export const OrderProvider = ({ children }) => {
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(prevOrders => prevOrders.map(order => {
       if (order.id === orderId) {
-        // Generate OTP if status is changing to completed
-        const otp = newStatus === ORDER_STATUS.COMPLETED
+        // Generate OTP if status is changing to ready
+        const otp = newStatus === ORDER_STATUS.READY && !order.otp
           ? Math.floor(1000 + Math.random() * 9000).toString()
           : order.otp;
           
-        if (newStatus === ORDER_STATUS.COMPLETED && !order.otp) {
+        if (newStatus === ORDER_STATUS.READY && !order.otp) {
           toast.success(`OTP generated for order ${orderId}: ${otp}`);
         }
         
@@ -182,7 +182,9 @@ export const OrderProvider = ({ children }) => {
       return order;
     }));
     
-    if (newStatus !== ORDER_STATUS.COMPLETED) {
+    if (newStatus === ORDER_STATUS.DELIVERED) {
+      toast.success(`Order ${orderId} has been delivered to the customer!`);
+    } else if (newStatus !== ORDER_STATUS.COMPLETED) {
       toast.success(`Order ${orderId} status updated to ${newStatus}`);
     }
   };
