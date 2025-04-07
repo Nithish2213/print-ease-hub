@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useOrders } from '../../context/OrderContext';
 import { 
@@ -14,7 +13,9 @@ import {
   Upload,
   Truck,
   Check,
-  Search
+  Search,
+  Copy,
+  LayoutPanelLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from "../ui/progress";
@@ -30,6 +31,13 @@ const ManageOrders = () => {
   const [printProgress, setPrintProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const printFrameRef = useRef(null);
+  const [printSettings, setPrintSettings] = useState({
+    printer: "Default Printer",
+    copies: 1,
+    layout: "portrait",
+    pages: "all",
+    doubleSided: false
+  });
 
   // Filter orders to show only active ones (not rejected)
   const activeOrders = orders.filter(
@@ -103,11 +111,12 @@ const ManageOrders = () => {
             
             <h2>Print Options:</h2>
             <div class="options">
-              <p><strong>Copies:</strong> ${currentPrintOrder.options.copies}</p>
+              <p><strong>Copies:</strong> ${printSettings.copies}</p>
               <p><strong>Print Type:</strong> ${currentPrintOrder.options.printType === 'bw' ? 'Black & White' : 'Color'}</p>
-              <p><strong>Sided:</strong> ${currentPrintOrder.options.sided === 'single' ? 'Single Sided' : 'Double Sided'}</p>
+              <p><strong>Sided:</strong> ${printSettings.doubleSided ? 'Double Sided' : 'Single Sided'}</p>
               <p><strong>Paper Size:</strong> ${currentPrintOrder.options.paperSize}</p>
-              <p><strong>Page Range:</strong> ${currentPrintOrder.options.pageRange || 'All Pages'}</p>
+              <p><strong>Layout:</strong> ${printSettings.layout === 'portrait' ? 'Portrait' : 'Landscape'}</p>
+              <p><strong>Page Range:</strong> ${printSettings.pages === 'all' ? 'All Pages' : printSettings.pages}</p>
             </div>
             
             ${currentPrintOrder.options.notes ? `
@@ -493,122 +502,192 @@ const ManageOrders = () => {
         </div>
       )}
 
-      {/* Enhanced Print Dialog */}
+      {/* Enhanced System Print Dialog - Matching the image provided */}
       {showPrintDialog && currentPrintOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Print Document</h3>
-              <button 
-                onClick={() => setShowPrintDialog(false)} 
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center pt-10 z-50">
+          <div className="bg-gray-100 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Print Dialog Header */}
+            <div className="bg-gray-800 text-white p-4 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-medium">Print</h3>
+                  <p className="text-sm text-gray-300">
+                    Total: {currentPrintOrder.files.reduce((total, file) => total + file.pages, 0)} sheets of paper
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowPrintDialog(false)} 
+                  className="text-gray-400 hover:text-white"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             
-            <div className="border rounded-md overflow-hidden mb-6">
-              {/* Print Preview Header */}
-              <div className="bg-gray-100 p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium">Print Preview - Order #{currentPrintOrder.id}</h4>
-                    <p className="text-sm text-gray-600">
-                      {currentPrintOrder.files.reduce((total, file) => total + file.pages, 0) * currentPrintOrder.options.copies} total pages
-                    </p>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-sm text-gray-600 mr-3">
-                      Printer Status: <span className="inline-flex items-center font-medium">
-                        <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5"></div>Ready
-                      </span>
-                    </span>
-                    <Printer className="h-6 w-6 text-gray-500" />
+            {/* Print Dialog Body */}
+            <div className="p-4">
+              {/* Printer Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Printer</label>
+                <div className="relative">
+                  <select 
+                    className="w-full border border-gray-300 rounded-md py-2 pl-3 pr-10 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    value={printSettings.printer}
+                    onChange={(e) => setPrintSettings({...printSettings, printer: e.target.value})}
+                  >
+                    <option>Default Printer</option>
+                    <option>HP Laser MFP 131 133 135-138</option>
+                    <option>Brother HL-L2320D</option>
+                    <option>Epson L3150</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown className="h-4 w-4" />
                   </div>
                 </div>
               </div>
               
-              {/* Document Preview */}
-              <div className="p-4 bg-white border-b">
-                <div className="aspect-ratio-box" style={{ position: 'relative', paddingTop: '141.4%', overflow: 'hidden', background: '#f9f9f9', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {currentPrintOrder.files.map((file, index) => (
-                      <div key={index} className="text-center" style={{ maxWidth: '90%', maxHeight: '90%' }}>
-                        <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                        <p className="text-sm font-medium text-gray-700">{file.name}</p>
-                        <p className="text-xs text-gray-500">Page 1 of {file.pages}</p>
-                      </div>
-                    ))}
-                  </div>
+              {/* Copies */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Copies</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="99" 
+                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  value={printSettings.copies}
+                  onChange={(e) => setPrintSettings({...printSettings, copies: parseInt(e.target.value) || 1})}
+                />
+              </div>
+              
+              {/* Layout */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Layout</label>
+                <div className="flex space-x-1">
+                  <label className="flex items-center border border-gray-300 rounded-md p-2 flex-1 cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="radio" 
+                      name="layout" 
+                      value="portrait"
+                      className="mr-2"
+                      checked={printSettings.layout === 'portrait'} 
+                      onChange={() => setPrintSettings({...printSettings, layout: 'portrait'})}
+                    />
+                    <span className="text-sm">Portrait</span>
+                  </label>
+                  <label className="flex items-center border border-gray-300 rounded-md p-2 flex-1 cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="radio" 
+                      name="layout" 
+                      value="landscape"
+                      className="mr-2"
+                      checked={printSettings.layout === 'landscape'} 
+                      onChange={() => setPrintSettings({...printSettings, layout: 'landscape'})}
+                    />
+                    <span className="text-sm">Landscape</span>
+                  </label>
                 </div>
               </div>
               
-              {/* Print Settings */}
-              <div className="p-4 bg-gray-50">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Print Settings</h4>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Print Type</span>
-                    <span>{formatPrintType(currentPrintOrder.options.printType)}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Copies</span>
-                    <span>{currentPrintOrder.options.copies}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Sided</span>
-                    <span>{formatSided(currentPrintOrder.options.sided)}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Paper Size</span>
-                    <span>{currentPrintOrder.options.paperSize}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Page Range</span>
-                    <span>{currentPrintOrder.options.pageRange}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="block text-gray-500 text-xs mb-1">Total Cost</span>
-                    <span className="font-medium">₹{currentPrintOrder.cost.toFixed(2)}</span>
-                  </div>
+              {/* Pages */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pages</label>
+                <div className="space-y-2">
+                  <label className="flex items-center cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="pages" 
+                      value="all"
+                      className="mr-2"
+                      checked={printSettings.pages === 'all'} 
+                      onChange={() => setPrintSettings({...printSettings, pages: 'all'})}
+                    />
+                    <span className="text-sm">All</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="pages" 
+                      value="odd"
+                      className="mr-2"
+                      checked={printSettings.pages === 'odd'} 
+                      onChange={() => setPrintSettings({...printSettings, pages: 'odd'})}
+                    />
+                    <span className="text-sm">Odd pages only</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="pages" 
+                      value="even"
+                      className="mr-2"
+                      checked={printSettings.pages === 'even'} 
+                      onChange={() => setPrintSettings({...printSettings, pages: 'even'})}
+                    />
+                    <span className="text-sm">Even pages only</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="pages" 
+                      value="custom"
+                      className="mr-2"
+                      checked={printSettings.pages !== 'all' && printSettings.pages !== 'odd' && printSettings.pages !== 'even'} 
+                      onChange={() => setPrintSettings({...printSettings, pages: ''})}
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 1-5, 8, 11-13"
+                      className="border border-gray-300 rounded-md py-1 px-2 text-sm"
+                      disabled={printSettings.pages === 'all' || printSettings.pages === 'odd' || printSettings.pages === 'even'}
+                      value={printSettings.pages !== 'all' && printSettings.pages !== 'odd' && printSettings.pages !== 'even' ? printSettings.pages : ''}
+                      onChange={(e) => setPrintSettings({...printSettings, pages: e.target.value})}
+                    />
+                  </label>
                 </div>
               </div>
-            </div>
-            
-            {printProgress > 0 && printProgress < 100 ? (
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Printing in progress...</span>
-                  <span className="text-sm">{printProgress}%</span>
-                </div>
-                <Progress value={printProgress} className="h-2" />
+              
+              {/* Double Sided */}
+              <div className="mb-4">
+                <label className="flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="mr-2"
+                    checked={printSettings.doubleSided} 
+                    onChange={() => setPrintSettings({...printSettings, doubleSided: !printSettings.doubleSided})}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Print on both sides</span>
+                </label>
               </div>
-            ) : (
-              <div className="flex justify-end space-x-3">
+              
+              {/* Progress Bar */}
+              {printProgress > 0 && printProgress < 100 && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1 text-xs">
+                    <span>Printing...</span>
+                    <span>{printProgress}%</span>
+                  </div>
+                  <Progress value={printProgress} className="h-1" />
+                </div>
+              )}
+              
+              {/* Action Buttons */}
+              <div className="flex justify-between mt-6">
                 <button 
                   onClick={() => setShowPrintDialog(false)}
-                  className="btn-secondary flex items-center"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded"
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
                   Cancel
                 </button>
                 
                 <button 
                   onClick={handlePrintConfirm}
-                  className="btn-primary flex items-center"
-                  disabled={printProgress > 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+                  disabled={printProgress > 0 && printProgress < 100}
                 >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Document
+                  Print
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
