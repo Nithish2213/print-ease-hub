@@ -14,7 +14,9 @@ import {
   LineChart,
   Palette,
   RefreshCw,
-  Trash2
+  Trash2,
+  Edit,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from "../ui/progress";
@@ -29,10 +31,10 @@ const InventoryManagement = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("consumables");
   const [stationaryItems, setStationaryItems] = useState([
-    { id: 1, name: "Spiral Binding Materials", quantity: 150, threshold: 30, unit: "sets" },
-    { id: 2, name: "Staples", quantity: 500, threshold: 100, unit: "boxes" },
-    { id: 3, name: "Tape", quantity: 15, threshold: 5, unit: "rolls" },
-    { id: 4, name: "Lamination Sheets", quantity: 200, threshold: 50, unit: "sheets" }
+    { id: 1, name: "A4 Paper", quantity: 2511, threshold: 500, unit: "sheets", lastRestocked: "Apr 7, 2025" },
+    { id: 2, name: "Black Toner", quantity: 3, threshold: 1, unit: "cartridges", lastRestocked: "Mar 24, 2025" },
+    { id: 3, name: "Color Toner", quantity: 2, threshold: 1, unit: "cartridges", lastRestocked: "Mar 17, 2025" },
+    { id: 4, name: "Spiral Binding Coils", quantity: 10, threshold: 5, unit: "packs", lastRestocked: "Mar 28, 2025" }
   ]);
 
   const [reportData, setReportData] = useState({
@@ -75,12 +77,15 @@ const InventoryManagement = () => {
   
   const addStationaryItem = () => {
     const newId = stationaryItems.length > 0 ? Math.max(...stationaryItems.map(item => item.id)) + 1 : 1;
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
     setStationaryItems([...stationaryItems, { 
       id: newId, 
       name: "New Item", 
       quantity: 0, 
       threshold: 10,
-      unit: "pcs"
+      unit: "pcs",
+      lastRestocked: today
     }]);
   };
   
@@ -198,7 +203,7 @@ const InventoryManagement = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Inventory Management</h1>
-        <p className="text-gray-600">Manage print supplies and stationary inventory</p>
+        <p className="text-gray-600">Track and manage printing supplies and resources</p>
       </div>
       
       {lowStockItems.length > 0 && (
@@ -234,7 +239,7 @@ const InventoryManagement = () => {
           </TabsTrigger>
           <TabsTrigger value="stationary" className="flex items-center gap-1.5">
             <ShoppingBag className="h-4 w-4" />
-            Stationary
+            Supplies
           </TabsTrigger>
           <TabsTrigger value="reports" className="flex items-center gap-1.5">
             <BarChart3 className="h-4 w-4" />
@@ -368,11 +373,11 @@ const InventoryManagement = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <ShoppingBag className="h-5 w-5 text-printhub-600 mr-2" />
-                  <h2 className="text-lg font-semibold">Stationary Items</h2>
+                  <h2 className="text-lg font-semibold">Inventory Management</h2>
                 </div>
                 <button 
                   onClick={addStationaryItem}
-                  className="flex items-center text-sm bg-printhub-600 text-white px-2 py-1 rounded hover:bg-printhub-700"
+                  className="flex items-center text-sm bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Item
@@ -382,10 +387,10 @@ const InventoryManagement = () => {
               {stationaryItems.length === 0 ? (
                 <div className="text-center py-6 text-gray-500">
                   <ShoppingBag className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                  <p>No stationary items added yet</p>
+                  <p>No inventory items added yet</p>
                   <button 
                     onClick={addStationaryItem}
-                    className="mt-2 text-sm text-printhub-600 hover:text-printhub-700"
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-700"
                   >
                     Add your first item
                   </button>
@@ -395,11 +400,10 @@ const InventoryManagement = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 text-left">
                       <tr>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                         <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Threshold</th>
                         <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Restocked</th>
                         <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
@@ -407,62 +411,31 @@ const InventoryManagement = () => {
                       {stationaryItems.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
                           <td className="px-4 py-2">
-                            <input 
-                              type="text" 
-                              value={item.name} 
-                              onChange={(e) => handleStationaryItemChange(item.id, 'name', e.target.value)}
-                              className="w-full px-1 py-1 border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
+                            {item.name}
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center space-x-2">
-                              <input 
-                                type="number" 
-                                value={item.quantity} 
-                                onChange={(e) => handleStationaryItemChange(item.id, 'quantity', e.target.value)}
-                                className="w-20 px-1 py-1 border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                              />
-                              <div className="flex space-x-1">
+                              <span>{item.quantity} {item.unit}</span>
+                              <div className="flex space-x-1 ml-2">
                                 <button 
                                   onClick={() => handleStationaryItemChange(item.id, 'quantity', item.quantity - 1)}
-                                  disabled={item.quantity <= 0}
-                                  className="p-1 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50"
+                                  className="p-1 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 text-xs"
                                 >
-                                  <Minus className="h-3 w-3 text-gray-600" />
+                                  <span>+1</span>
                                 </button>
                                 <button 
-                                  onClick={() => handleStationaryItemChange(item.id, 'quantity', item.quantity + 1)}
-                                  className="p-1 bg-gray-100 hover:bg-gray-200 rounded"
+                                  onClick={() => handleStationaryItemChange(item.id, 'quantity', item.quantity + 10)}
+                                  className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-xs"
                                 >
-                                  <Plus className="h-3 w-3 text-gray-600" />
+                                  <span>+10</span>
                                 </button>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-2">
-                            <input 
-                              type="text" 
-                              value={item.unit} 
-                              onChange={(e) => handleStationaryItemChange(item.id, 'unit', e.target.value)}
-                              className="w-20 px-1 py-1 border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input 
-                              type="number" 
-                              value={item.threshold} 
-                              onChange={(e) => handleStationaryItemChange(item.id, 'threshold', e.target.value)}
-                              className="w-20 px-1 py-1 border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
                             {item.quantity < item.threshold ? (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                 Low Stock
-                              </span>
-                            ) : item.quantity < item.threshold * 2 ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                Warning
                               </span>
                             ) : (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -470,21 +443,35 @@ const InventoryManagement = () => {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-right">
-                            <button 
-                              onClick={() => toggleReportItem(item.id, 'stationary', item.name, item.quantity, item.threshold, item.unit)}
-                              className={`p-1 rounded mr-1 ${isItemSelected(item.id, 'stationary') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                              title="Add to report"
-                            >
-                              {isItemSelected(item.id, 'stationary') ? <span>✓</span> : <Send className="h-4 w-4" />}
-                            </button>
-                            <button 
-                              onClick={() => removeStationaryItem(item.id)} 
-                              className="p-1 bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded"
-                              title="Remove item"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+                              {item.lastRestocked}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex space-x-1">
+                              <button 
+                                onClick={() => toggleReportItem(item.id, 'stationary', item.name, item.quantity, item.threshold, item.unit)}
+                                className={`p-1 rounded ${isItemSelected(item.id, 'stationary') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                                title="Add to report"
+                              >
+                                {isItemSelected(item.id, 'stationary') ? <span>✓</span> : <span>+</span>}
+                              </button>
+                              <button
+                                className="p-1 bg-gray-100 hover:bg-gray-200 rounded"
+                                title="Edit item"
+                              >
+                                <Edit className="h-4 w-4 text-gray-600" />
+                              </button>
+                              <button 
+                                onClick={() => removeStationaryItem(item.id)} 
+                                className="p-1 bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded"
+                                title="Remove item"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
