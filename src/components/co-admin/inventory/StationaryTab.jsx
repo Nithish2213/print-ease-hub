@@ -16,14 +16,14 @@ const StationaryTab = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <ShoppingBag className="h-5 w-5 text-printhub-600 mr-2" />
-            <h2 className="text-lg font-semibold">Inventory Management</h2>
+            <h2 className="text-lg font-semibold">Supplies Inventory</h2>
           </div>
           <button 
             onClick={addStationaryItem}
             className="flex items-center text-sm bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-1" />
-            Add Item
+            Add New Item
           </button>
         </div>
         
@@ -61,7 +61,14 @@ const StationaryTab = ({
                         <span>{item.quantity} {item.unit}</span>
                         <div className="flex space-x-1 ml-2">
                           <button 
-                            onClick={() => handleStationaryItemChange(item.id, 'quantity', item.quantity - 1)}
+                            onClick={() => handleStationaryItemChange(item.id, 'quantity', Math.max(0, item.quantity - 1))}
+                            className="p-1 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 text-xs"
+                            disabled={item.quantity <= 0}
+                          >
+                            <span>-1</span>
+                          </button>
+                          <button 
+                            onClick={() => handleStationaryItemChange(item.id, 'quantity', item.quantity + 1)}
                             className="p-1 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 text-xs"
                           >
                             <span>+1</span>

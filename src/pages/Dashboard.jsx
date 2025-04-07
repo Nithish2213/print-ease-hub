@@ -19,12 +19,17 @@ import RevenueReport from '../components/admin/RevenueReport';
 
 const Dashboard = ({ content }) => {
   const { currentUser } = useAuth();
-  const { printerStatus } = useOrders();
+  const { printerStatus, notifications } = useOrders();
 
   // If not logged in, redirect to login page
   if (!currentUser) {
     return <Navigate to="/" replace />;
   }
+
+  // Get unread notifications count for the order status
+  const getUnreadNotifications = () => {
+    return notifications.filter(notif => !notif.read && notif.type === 'new-order').length;
+  };
 
   // Render appropriate dashboard based on user role and content type
   const renderContent = () => {
@@ -80,6 +85,15 @@ const Dashboard = ({ content }) => {
           <strong>Notice:</strong> Print server is currently {printerStatus}. {printerStatus === 'offline' ? 'New orders cannot be processed at this time.' : 'Orders may be delayed.'}
         </div>
       )}
+
+      {/* Show notification for co-admins about new orders */}
+      {currentUser.role === ROLES.CO_ADMIN && content !== 'manage-orders' && getUnreadNotifications() > 0 && (
+        <div className="w-full p-3 mb-4 text-center bg-blue-100 text-blue-700">
+          <strong>New Order Alert:</strong> You have {getUnreadNotifications()} new order{getUnreadNotifications() > 1 ? 's' : ''} waiting for approval. 
+          <Navigate to="/dashboard/manage-orders" className="ml-2 underline">View Orders</Navigate>
+        </div>
+      )}
+      
       {renderContent()}
     </Layout>
   );
