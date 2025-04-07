@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useOrders } from '../../context/OrderContext';
 import { 
   FileText, 
@@ -29,6 +29,7 @@ const ManageOrders = () => {
   const [otpVerification, setOtpVerification] = useState({ orderId: null, otp: '' });
   const [printProgress, setPrintProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const printFrameRef = useRef(null);
 
   // Filter orders to show only active ones (not rejected)
   const activeOrders = orders.filter(
@@ -40,7 +41,7 @@ const ManageOrders = () => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesSearch = searchQuery === '' || 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (order.paymentDetails.name && order.paymentDetails.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      (order.paymentDetails?.name && order.paymentDetails.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesStatus && matchesSearch;
   });
 
@@ -60,25 +61,112 @@ const ManageOrders = () => {
     }
   };
 
-  const handlePrintConfirm = () => {
-    if (currentPrintOrder) {
-      // Simulate printing progress
-      setPrintProgress(0);
-      const interval = setInterval(() => {
+  // Function to actually send to system printer
+  const printDocument = () => {
+    try {
+      // Create print content in a hidden iframe
+      const printContent = `
+        <html>
+          <head>
+            <title>Print Order #${currentPrintOrder.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              .header { text-align: center; margin-bottom: 20px; }
+              .print-info { margin-bottom: 20px; }
+              .file-list { margin-bottom: 20px; }
+              .file-item { margin-bottom: 10px; padding: 8px; border: 1px solid #eee; }
+              .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Print Order #${currentPrintOrder.id}</h1>
+              <p>Submitted on: ${new Date(currentPrintOrder.createdAt).toLocaleString()}</p>
+            </div>
+            
+            <div class="print-info">
+              ${currentPrintOrder.paymentDetails?.name ? `<p><strong>Customer:</strong> ${currentPrintOrder.paymentDetails.name}</p>` : ''}
+              <p><strong>Total Pages:</strong> ${currentPrintOrder.files.reduce((total, file) => total + file.pages, 0) * currentPrintOrder.options.copies}</p>
+              <p><strong>Total Cost:</strong> ₹${currentPrintOrder.cost.toFixed(2)}</p>
+            </div>
+            
+            <h2>Files to Print:</h2>
+            <div class="file-list">
+              ${currentPrintOrder.files.map((file, index) => `
+                <div class="file-item">
+                  <p><strong>File ${index + 1}:</strong> ${file.name}</p>
+                  <p>Pages: ${file.pages} | Size: ${file.size}</p>
+                </div>
+              `).join('')}
+            </div>
+            
+            <h2>Print Options:</h2>
+            <div class="options">
+              <p><strong>Copies:</strong> ${currentPrintOrder.options.copies}</p>
+              <p><strong>Print Type:</strong> ${currentPrintOrder.options.printType === 'bw' ? 'Black & White' : 'Color'}</p>
+              <p><strong>Sided:</strong> ${currentPrintOrder.options.sided === 'single' ? 'Single Sided' : 'Double Sided'}</p>
+              <p><strong>Paper Size:</strong> ${currentPrintOrder.options.paperSize}</p>
+              <p><strong>Page Range:</strong> ${currentPrintOrder.options.pageRange || 'All Pages'}</p>
+            </div>
+            
+            ${currentPrintOrder.options.notes ? `
+              <h2>Additional Notes:</h2>
+              <p>${currentPrintOrder.options.notes}</p>
+            ` : ''}
+            
+            <div class="footer">
+              <p>This is an automatically generated print document. Order ID: ${currentPrintOrder.id}</p>
+            </div>
+          </body>
+        </html>
+      `;
+      
+      // Create or use existing iframe for printing
+      if (!printFrameRef.current) {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        printFrameRef.current = iframe;
+      }
+      
+      // Write print content to iframe
+      const frameDoc = printFrameRef.current.contentDocument || printFrameRef.current.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(printContent);
+      frameDoc.close();
+      
+      // Simulate print progress
+      setPrintProgress(10);
+      
+      const printProgressInterval = setInterval(() => {
         setPrintProgress(prev => {
-          const newProgress = prev + 10;
+          const newProgress = prev + 15;
           if (newProgress >= 100) {
-            clearInterval(interval);
+            clearInterval(printProgressInterval);
+            // Trigger the actual print once progress reaches 100%
             setTimeout(() => {
+              printFrameRef.current.contentWindow.print();
               updateOrderStatus(currentPrintOrder.id, ORDER_STATUS.PRINTING);
               setShowPrintDialog(false);
               setCurrentPrintOrder(null);
-              toast.success(`Printing completed for order ${currentPrintOrder.id}`);
+              toast.success(`Print job sent for order ${currentPrintOrder.id}`);
             }, 500);
           }
           return newProgress;
         });
       }, 500);
+      
+    } catch (error) {
+      console.error("Printing failed:", error);
+      toast.error("Could not send to printer. Please check printer connection.");
+      setPrintProgress(0);
+    }
+  };
+
+  const handlePrintConfirm = () => {
+    if (currentPrintOrder) {
+      printDocument();
     }
   };
 
