@@ -33,6 +33,9 @@ const Dashboard = ({ content }) => {
 
   // Render appropriate dashboard based on user role and content type
   const renderContent = () => {
+    console.log("Dashboard content:", content);
+    console.log("User role:", currentUser.role);
+    
     // Handle student-specific content views
     if (currentUser.role === ROLES.STUDENT) {
       switch (content) {
