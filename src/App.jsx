@@ -23,15 +23,19 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               
-              {/* Student Routes */}
+              {/* Dashboard Routes */}
               <Route path="/dashboard" element={<Dashboard />} />
+              
+              {/* Student Routes */}
               <Route path="/dashboard/print" element={<Dashboard content="print" />} />
               <Route path="/dashboard/tracking" element={<Dashboard content="tracking" />} />
               <Route path="/dashboard/orders" element={<Dashboard content="orders" />} />
               
               {/* Co-Admin Routes */}
               <Route path="/dashboard/manage-orders" element={<Dashboard content="manage-orders" />} />
+              <Route path="/manage-orders" element={<Dashboard content="manage-orders" />} /> {/* Adding alternate route */}
               <Route path="/dashboard/inventory" element={<Dashboard content="inventory" />} />
+              <Route path="/inventory" element={<Dashboard content="inventory" />} /> {/* Adding alternate route */}
               <Route path="/dashboard/printer-controls" element={<Dashboard content="printer-controls" />} />
               
               {/* Admin Routes */}
