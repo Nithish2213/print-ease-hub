@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
@@ -90,7 +90,7 @@ const Dashboard = ({ content }) => {
       {currentUser.role === ROLES.CO_ADMIN && content !== 'manage-orders' && getUnreadNotifications() > 0 && (
         <div className="w-full p-3 mb-4 text-center bg-blue-100 text-blue-700">
           <strong>New Order Alert:</strong> You have {getUnreadNotifications()} new order{getUnreadNotifications() > 1 ? 's' : ''} waiting for approval. 
-          <Navigate to="/dashboard/manage-orders" className="ml-2 underline">View Orders</Navigate>
+          <Link to="/dashboard/manage-orders" className="ml-2 underline">View Orders</Link>
         </div>
       )}
       
