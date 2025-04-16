@@ -1,6 +1,38 @@
 
-export const getLowStockItems = (inventory, stationaryItems) => {
-  const lowStockItems = [];
+// Define TypeScript interfaces for our inventory data structure
+interface InkInventory {
+  [key: string]: number;
+}
+
+interface PaperInventory {
+  [key: string]: number;
+}
+
+interface InventoryData {
+  ink: InkInventory;
+  paper: PaperInventory;
+}
+
+interface StationaryItem {
+  id: number;
+  name: string;
+  quantity: number;
+  threshold: number;
+  unit: string;
+  lastRestocked: string;
+}
+
+interface LowStockItem {
+  id: string | number;
+  type: 'ink' | 'paper' | 'stationary';
+  name: string;
+  quantity: number;
+  threshold: number;
+  unit: string;
+}
+
+export const getLowStockItems = (inventory: InventoryData, stationaryItems: StationaryItem[]): LowStockItem[] => {
+  const lowStockItems: LowStockItem[] = [];
   
   // Check ink levels
   Object.entries(inventory.ink).forEach(([name, level]) => {
@@ -47,7 +79,7 @@ export const getLowStockItems = (inventory, stationaryItems) => {
   return lowStockItems;
 };
 
-export const createNewStationaryItem = (stationaryItems) => {
+export const createNewStationaryItem = (stationaryItems: StationaryItem[]): StationaryItem => {
   const newId = stationaryItems.length > 0 ? Math.max(...stationaryItems.map(item => item.id)) + 1 : 1;
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useOrders } from '../../context/OrderContext';
 import { Inbox, ShoppingBag, Printer, BarChart3 } from 'lucide-react';
@@ -10,7 +9,7 @@ import ConsumablesTab from './inventory/ConsumablesTab';
 import StationaryTab from './inventory/StationaryTab';
 import ReportsTab from './inventory/ReportsTab';
 import LowStockWarning from './inventory/LowStockWarning';
-import { getLowStockItems, createNewStationaryItem } from './inventory/inventoryUtils';
+import { getLowStockItems, createNewStationaryItem } from './inventory/inventoryUtils.js';
 
 const InventoryManagement = () => {
   const { inventory, updateInventory } = useOrders();

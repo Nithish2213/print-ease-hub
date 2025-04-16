@@ -1,6 +1,9 @@
 
 /**
  * Gets all inventory items that are below their threshold levels
+ * @param {Object} inventory - The inventory object with ink and paper properties
+ * @param {Array} stationaryItems - Array of stationary items
+ * @returns {Array} - Array of low stock items
  */
 export const getLowStockItems = (inventory, stationaryItems) => {
   const lowStockItems = [];
@@ -52,6 +55,8 @@ export const getLowStockItems = (inventory, stationaryItems) => {
 
 /**
  * Creates a new stationary item with default values
+ * @param {Array} stationaryItems - Existing stationary items array
+ * @returns {Object} - New stationary item object
  */
 export const createNewStationaryItem = (stationaryItems) => {
   const newId = stationaryItems.length > 0 ? Math.max(...stationaryItems.map(item => item.id)) + 1 : 1;
